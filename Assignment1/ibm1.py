@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Assignment 1 for Machine Translation
 # Steven Eardley s0934142
 
@@ -27,7 +28,16 @@ else:
        #t(e|f) = count(e|f) / total(f)
 
 def readpairs(to_file, from_file):
-    prob = []
+        f1 = open(to_file, 'r')
+        f2 = open(from_file, 'r')
+    try:
+        to_sentences = f1.readlines()
+        from_sentences = f2.readlines()
+    finally:
+        f1.close()
+        f2.close()
+        
+    
     return prob
 
 def train():
