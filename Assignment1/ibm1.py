@@ -3,13 +3,14 @@
 # Steven Eardley s0934142
 
 import re
-from sys import argv
+from sys import argv, exit
 
 if len(argv) == 3:
     to_file = argv[1]
     from_file = argv[2]
 else:
     print "\nUse: ibm1.py to_language from_language\nWhere these files are an alligned corpus.\n"
+    exit()
 
 # punctuation tends to be surrounded by spaces.
 
@@ -36,6 +37,9 @@ sentences = dict()
 # Store translations in a dictionary: { f : ([[e , t_ef, count_ef]], total_f) }
 translations = dict()
 
+# Store the accumulated sentence probabilities
+total_s = dict()
+
 # Store sets of words
 e_words = set([])
 f_words = set([])
@@ -43,10 +47,10 @@ f_words = set([])
 # Remove punctuation which is surrounded by spaces, and separate into a list of words
 def list_words(sentence_string):
     nonpunc_string = re.sub(' \W ', ' ', sentence_string)
-    tokens = nonpunc_string.split(" ")
     
-    # Get rid of the newline
-    return tokens[:len(tokens)-1]
+    # Get rid of the newline and full stop if present
+    remove_newline = re.sub('\.*\n', '', nonpunc_string)
+    return remove_newline.split(" ")
 
 # Read sentence pairs from two alligned files.
 def readpairs(to_file, from_file):
@@ -72,28 +76,90 @@ def readpairs(to_file, from_file):
         global e_words, f_words
         e_words = e_words | set(to_words)
         f_words = f_words | set(from_words)
-        
 
-def train():
+def ibm1():
+    init_uniformly()
+    
     converged = False
-    
     while not converged:
-        intialise()
+        #intialise()
+        converged = True
         for (e_s, f_s) in sentences.values():
+            
+            
+            # Compute normalisation
             for e in e_s:
-                total_e = 0
-    
-    return 0
+                total_s[e] = 0.0
+                for f in f_s:
+                    
+                    # Sum the t_ef probabilities when e is found in the translations
+                    (E_list, total_f) = translations[f]
+                    for [E, t_ef, count_ef] in E_list:
+                        if E == e:
+                            total_s[e] = total_s[e] + t_ef
+           
+                    # Sum the t_ef probabilities when e is found in the translations
+                    #for i in range (0, len(translations[f][0])):
+                        #if translations[f][i][0] == e:
+                            #total_s[e] += translations[f][i][1]
+            
+            # Collect counts
+            for e in e_s:
+                for f in f_s:
+                    (E_list, total_f)  = translations[f]
+                    new_E_list = []
+                    for [E, t_ef, count_ef] in E_list:
+                        if E == e:
+                            count_ef += t_ef / total_s[e]
+                        new_E_list.append([E, t_ef, count_ef])
+                    print f
+                    print "t_ef " + str(t_ef)
+                    print "total_s[e] " + str(total_s[e])
+                    translations[f] = (new_E_list, total_f + t_ef / total_s[e])
+                        
+            
+            # Estimate probabilities
+            for F in translations.keys():
+                (E_list, total_f)  = translations[f]
+                new_E_list = []
+                for [E, t_ef, count_ef] in E_list:
+                    try:
+                        new_E_list.append([E, count_ef / total_f, 0.0])
+                    except ZeroDivisionError:
+                        print "ZeroDivisionError!"
+                        new_E_list.append([E, 0.0, 0.0])
+                if new_E_list != E_list:
+                    converged = False
+                translations[f] = (new_E_list, 0.0)
 
-def initialise():
-    for (f, ([[e , t_ef, count_ef]], total_f)) in translations.items():
-        translations[f] = ([[e, t_ef, 0]], 0)
+# Initialise with each foreign word with its available translations, with uniform probability.
+def init_uniformly():
+    global e_words, f_words
+    uniform_prob = 1 / float(len(e_words))
+    for f in f_words:
+        translations[f] = ( [[ e, uniform_prob, 0.0] for e in e_words] , 0.0)
+    
+    for e in e_words:
+        total_s[e] = 0.0
+    
+#def initialise():
+    #for (f, (e_stuff, total_f)) in translations.items():
+        #new_e_stuff = []
+        #for [e, t_ef, count_ef] in e_stuff:
+            #new_e_stuff += [[e, t_ef, 0]]
+        #translations[f] = (new_e_stuff, 0)
 
 def translate():
     return 0
     
 readpairs(to_file, from_file)
-print sentences.items()[:4]
 
-print e_words
-print f_words
+init_uniformly()
+print translations.items()
+print 
+ibm1()
+
+for f in translations.keys():
+    print f
+    print translations[f]
+    print
