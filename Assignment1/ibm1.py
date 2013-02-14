@@ -36,6 +36,10 @@ sentences = dict()
 # Store translations in a dictionary: { f : ([[e , t_ef, count_ef]], total_f) }
 translations = dict()
 
+# Store sets of words
+e_words = set([])
+f_words = set([])
+
 # Remove punctuation which is surrounded by spaces, and separate into a list of words
 def list_words(sentence_string):
     nonpunc_string = re.sub(' \W ', ' ', sentence_string)
@@ -59,7 +63,16 @@ def readpairs(to_file, from_file):
         print "Mismatched document lengths!"
     
     for i in range(0, len(to_sentences)):
-        sentences[i] = (list_words(to_sentences[i]), list_words(from_sentences[i]))
+        # Seperate the sentence into words and store in dictionary
+        to_words = list_words(to_sentences[i])
+        from_words = list_words(from_sentences[i])
+        sentences[i] = (to_words, from_words)
+        
+        # Store the unique words
+        global e_words, f_words
+        e_words = e_words | set(to_words)
+        f_words = f_words | set(from_words)
+        
 
 def train():
     converged = False
@@ -68,7 +81,7 @@ def train():
         intialise()
         for (e_s, f_s) in sentences.values():
             for e in e_s:
-                s-total_e = 0
+                total_e = 0
     
     return 0
 
@@ -80,4 +93,7 @@ def translate():
     return 0
     
 readpairs(to_file, from_file)
-print sentences[1]
+print sentences.items()[:4]
+
+print e_words
+print f_words
