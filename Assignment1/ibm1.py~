@@ -30,8 +30,11 @@ else:
      #for all e
        #t(e|f) = count(e|f) / total(f)
 
-# Store the alligned sentences in a dictionary: { sentenceno : ([e_s], [f_s]) }
+# Store the alligned sentences in a dictionary: { sentence_no : ([e], [f]) }
 sentences = dict()
+
+# Store translations in a dictionary: { f : ([[e , t_ef, count_ef]], total_f) }
+translations = dict()
 
 # Remove punctuation which is surrounded by spaces, and separate into a list of words
 def list_words(sentence_string):
@@ -59,7 +62,19 @@ def readpairs(to_file, from_file):
         sentences[i] = (list_words(to_sentences[i]), list_words(from_sentences[i]))
 
 def train():
+    converged = False
+    
+    while not converged:
+        intialise()
+        for (e_s, f_s) in sentences.values():
+            for e in e_s:
+                s-total_e = 0
+    
     return 0
+
+def initialise():
+    for (f, ([[e , t_ef, count_ef]], total_f)) in translations.items():
+        translations[f] = ([[e, t_ef, 0]], 0)
 
 def translate():
     return 0
