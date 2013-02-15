@@ -81,8 +81,8 @@ def ibm1():
     init_uniformly()
     
     converged = False
+    n_iterations = 0
     while not converged:
-        #intialise()
         converged = True
         for (e_s, f_s) in sentences.values():
             
@@ -97,11 +97,6 @@ def ibm1():
                     for [E, t_ef, count_ef] in E_list:
                         if E == e:
                             total_s[e] = total_s[e] + t_ef
-           
-                    # Sum the t_ef probabilities when e is found in the translations
-                    #for i in range (0, len(translations[f][0])):
-                        #if translations[f][i][0] == e:
-                            #total_s[e] += translations[f][i][1]
             
             # Collect counts
             for e in e_s:
@@ -112,26 +107,27 @@ def ibm1():
                         if E == e:
                             count_ef += t_ef / total_s[e]
                         new_E_list.append([E, t_ef, count_ef])
-                    print f
-                    print "t_ef " + str(t_ef)
-                    print "total_s[e] " + str(total_s[e])
                     translations[f] = (new_E_list, total_f + t_ef / total_s[e])
-                        
             
             # Estimate probabilities
             for F in translations.keys():
-                (E_list, total_f)  = translations[f]
+                (E_list, total_f)  = translations[F]
                 new_E_list = []
                 for [E, t_ef, count_ef] in E_list:
+                    new_t_ef = t_ef
                     try:
-                        new_E_list.append([E, count_ef / total_f, 0.0])
+                        new_t_ef = count_ef / total_f
+                        new_E_list.append([E, new_t_ef, 0.0])
                     except ZeroDivisionError:
-                        print "ZeroDivisionError!"
-                        new_E_list.append([E, 0.0, 0.0])
-                if new_E_list != E_list:
-                    converged = False
-                translations[f] = (new_E_list, 0.0)
-
+                        new_E_list.append([E, new_t_ef, 0.0])
+                    if int(new_t_ef * 1000) != int(t_ef * 1000):
+                        converged = False
+                translations[F] = (new_E_list, 0.0)
+                    
+        if n_iterations > 1000:
+           converged = True
+           print "\nToo many iterations - forced convergence\n"
+        n_iterations += 1
 # Initialise with each foreign word with its available translations, with uniform probability.
 def init_uniformly():
     global e_words, f_words
@@ -141,13 +137,6 @@ def init_uniformly():
     
     for e in e_words:
         total_s[e] = 0.0
-    
-#def initialise():
-    #for (f, (e_stuff, total_f)) in translations.items():
-        #new_e_stuff = []
-        #for [e, t_ef, count_ef] in e_stuff:
-            #new_e_stuff += [[e, t_ef, 0]]
-        #translations[f] = (new_e_stuff, 0)
 
 def translate():
     return 0
@@ -155,11 +144,10 @@ def translate():
 readpairs(to_file, from_file)
 
 init_uniformly()
-print translations.items()
-print 
 ibm1()
 
 for f in translations.keys():
-    print f
-    print translations[f]
-    print
+    print "\n" + f 
+    sorted_list = sorted(translations[f][0], key=lambda x: x[1], reverse = True)
+    for [a, b, c] in sorted_list:
+        print "{0}\t\t{1}".format(a, b)
