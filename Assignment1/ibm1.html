@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta name="Generator" content="Kate, the KDE Advanced Text Editor" />
+<title>ibm1.py</title>
+</head>
+<body>
+<pre>
+<span style='color: #808080'><i># -*- coding: utf-8 -*-</i></span>
+<span style='color: #808080'><i># Assignment 1 for Machine Translation</i></span>
+<span style='color: #808080'><i># Steven Eardley s0934142</i></span>
+
+<span style='color: #ff00ff'>import</span> re
+<span style='color: #ff00ff'>from</span> sys <span style='color: #ff00ff'>import</span> argv, exit
+
+<b>if</b> <span style='color: #800000'>len</span><b>(</b>argv<b>)</b> <b>==</b> <span style='color: #0000ff'>3</span>:
+    to_file <b>=</b> argv[<span style='color: #0000ff'>1</span>]
+    from_file <b>=</b> argv[<span style='color: #0000ff'>2</span>]
+<b>else</b>:
+    <b>print</b> <span style='color: #dd0000'>&quot;</span><span style='color: #ff00ff'>\n</span><span style='color: #dd0000'>Use: ibm1.py to_language from_language</span><span style='color: #ff00ff'>\n</span><span style='color: #dd0000'>Where these files are an alligned corpus.</span><span style='color: #ff00ff'>\n</span><span style='color: #dd0000'>&quot;</span>
+    exit<b>()</b>
+
+<span style='color: #808080'><i># Store the alligned sentences in a dictionary: { sentence_no : ([e], [f]) }</i></span>
+sentences <b>=</b> <span style='color: #800000'>dict</span><b>()</b>
+
+<span style='color: #808080'><i># Store translations in a dictionary: { f : ([[e , t_ef, count_ef]], total_f) }</i></span>
+translations <b>=</b> <span style='color: #800000'>dict</span><b>()</b>
+
+<span style='color: #808080'><i># Store the accumulated sentence probabilities</i></span>
+total_s <b>=</b> <span style='color: #800000'>dict</span><b>()</b>
+
+<span style='color: #808080'><i># Store sets of words</i></span>
+e_words <b>=</b> <span style='color: #800000'>set</span><b>(</b>[]<b>)</b>
+f_words <b>=</b> <span style='color: #800000'>set</span><b>(</b>[]<b>)</b>
+
+<span style='color: #808080'><i># Remove punctuation which is surrounded by spaces, and separate into a list of words</i></span>
+<b>def</b> list_words<b>(</b>sentence_string<b>)</b>:
+    nonpunc_string <b>=</b> re.sub<b>(</b><span style='color: #dd0000'>' \W '</span>, <span style='color: #dd0000'>' '</span>, sentence_string<b>)</b>
+    
+    <span style='color: #808080'><i># Get rid of the newline and full stop if present</i></span>
+    remove_newline <b>=</b> re.sub<b>(</b><span style='color: #dd0000'>'\.*</span><span style='color: #ff00ff'>\n</span><span style='color: #dd0000'>'</span>, <span style='color: #dd0000'>''</span>, nonpunc_string<b>)</b>
+    <b>return</b> remove_newline.split<b>(</b><span style='color: #dd0000'>&quot; &quot;</span><b>)</b>
+
+<span style='color: #808080'><i># Read sentence pairs from two alligned files.</i></span>
+<b>def</b> readpairs<b>(</b>to_file, from_file<b>)</b>:
+    f1 <b>=</b> <span style='color: #800000'>open</span><b>(</b>to_file, <span style='color: #dd0000'>'r'</span><b>)</b>
+    f2 <b>=</b> <span style='color: #800000'>open</span><b>(</b>from_file, <span style='color: #dd0000'>'r'</span><b>)</b>
+    <b>try</b>:
+        to_sentences <b>=</b> f1.readlines<b>()</b>
+        from_sentences <b>=</b> f2.readlines<b>()</b>
+    <b>finally</b>:
+        f1.close<b>()</b>
+        f2.close<b>()</b>
+    
+    <b>if</b> <span style='color: #800000'>len</span><b>(</b>to_sentences<b>)</b> <b>!=</b> <span style='color: #800000'>len</span><b>(</b>from_sentences<b>)</b>:
+        <b>print</b> <span style='color: #dd0000'>&quot;Mismatched document lengths!&quot;</span>
+    
+    <b>for</b> i <b>in</b> <span style='color: #800000'>range</span><b>(</b><span style='color: #0000ff'>0</span>, <span style='color: #800000'>len</span><b>(</b>to_sentences<b>))</b>:
+        <span style='color: #808080'><i># Seperate the sentence into words and store in dictionary</i></span>
+        to_words <b>=</b> list_words<b>(</b>to_sentences[i]<b>)</b>
+        from_words <b>=</b> list_words<b>(</b>from_sentences[i]<b>)</b>
+        sentences[i] <b>=</b> <b>(</b>to_words, from_words<b>)</b>
+        
+        <span style='color: #808080'><i># Store the unique words</i></span>
+        <b>global</b> e_words, f_words
+        e_words <b>=</b> e_words <b>|</b> <span style='color: #800000'>set</span><b>(</b>to_words<b>)</b>
+        f_words <b>=</b> f_words <b>|</b> <span style='color: #800000'>set</span><b>(</b>from_words<b>)</b>
+
+<span style='color: #808080'><i># Run IBM Model 1 until convergence. I tried to match the pseudo code here.</i></span>
+<b>def</b> ibm1<b>()</b>:
+    init_uniformly<b>()</b>
+    
+    converged <b>=</b> <span style='color: #008000'>False</span>
+    n_iterations <b>=</b> <span style='color: #0000ff'>0</span>
+    <b>while</b> <b>not</b> converged:
+        converged <b>=</b> <span style='color: #008000'>True</span>
+        <b>for</b> <b>(</b>e_s, f_s<b>)</b> <b>in</b> sentences.values<b>()</b>:
+            
+            
+            <span style='color: #808080'><i># Compute normalisation</i></span>
+            <b>for</b> e <b>in</b> e_s:
+                total_s[e] <b>=</b> <span style='color: #800080'>0.0</span>
+                <b>for</b> f <b>in</b> f_s:
+                    
+                    <span style='color: #808080'><i># Sum the t_ef probabilities when e is found in the translations</i></span>
+                    <b>(</b>E_list, total_f<b>)</b> <b>=</b> translations[f]
+                    <b>for</b> [E, t_ef, count_ef] <b>in</b> E_list:
+                        <b>if</b> E <b>==</b> e:
+                            total_s[e] <b>=</b> total_s[e] <b>+</b> t_ef
+            
+            <span style='color: #808080'><i># Collect counts</i></span>
+            <b>for</b> e <b>in</b> e_s:
+                <b>for</b> f <b>in</b> f_s:
+                    <b>(</b>E_list, total_f<b>)</b>  <b>=</b> translations[f]
+                    new_E_list <b>=</b> []
+                    <b>if</b> total_s[e] <b>!=</b> <span style='color: #800080'>0.0</span>:
+                        <b>for</b> [E, t_ef, count_ef] <b>in</b> E_list:
+                            <b>if</b> E <b>==</b> e:
+                                count_ef <b>+=</b> t_ef <b>/</b> total_s[e]
+                            new_E_list.append<b>(</b>[E, t_ef, count_ef]<b>)</b>
+                        translations[f] <b>=</b> <b>(</b>new_E_list, total_f <b>+</b> t_ef <b>/</b> total_s[e]<b>)</b>
+            
+            <span style='color: #808080'><i># Estimate probabilities</i></span>
+            <b>for</b> F <b>in</b> translations.keys<b>()</b>:
+                <b>(</b>E_list, total_f<b>)</b>  <b>=</b> translations[F]
+                new_E_list <b>=</b> []
+                <b>for</b> [E, t_ef, count_ef] <b>in</b> E_list:
+                    new_t_ef <b>=</b> t_ef
+                    <b>try</b>:
+                        new_t_ef <b>=</b> count_ef <b>/</b> total_f
+                        new_E_list.append<b>(</b>[E, new_t_ef, <span style='color: #800080'>0.0</span>]<b>)</b>
+                    <b>except</b> <span style='color: #054d00'><b>ZeroDivisionError</b></span>:
+                        new_E_list.append<b>(</b>[E, new_t_ef, <span style='color: #800080'>0.0</span>]<b>)</b>
+                    <b>if</b> <span style='color: #800000'>int</span><b>(</b>new_t_ef <b>*</b> <span style='color: #0000ff'>1000</span><b>)</b> <b>!=</b> <span style='color: #800000'>int</span><b>(</b>t_ef <b>*</b> <span style='color: #0000ff'>1000</span><b>)</b>:
+                        converged <b>=</b> <span style='color: #008000'>False</span>
+                translations[F] <b>=</b> <b>(</b>new_E_list, <span style='color: #800080'>0.0</span><b>)</b>
+                    
+        <b>if</b> n_iterations <b>&gt;</b> <span style='color: #0000ff'>10</span>:
+           converged <b>=</b> <span style='color: #008000'>True</span>
+           <b>print</b> <span style='color: #dd0000'>&quot;</span><span style='color: #ff00ff'>\n</span><span style='color: #dd0000'>Too many iterations - forced convergence</span><span style='color: #ff00ff'>\n</span><span style='color: #dd0000'>&quot;</span>
+        n_iterations <b>+=</b> <span style='color: #0000ff'>1</span>
+        
+<span style='color: #808080'><i># Initialise with each foreign word with its available translations, with uniform probability.</i></span>
+<b>def</b> init_uniformly<b>()</b>:
+    <b>global</b> e_words, f_words
+    uniform_prob <b>=</b> <span style='color: #0000ff'>1</span> <b>/</b> <span style='color: #800000'>float</span><b>(</b><span style='color: #800000'>len</span><b>(</b>e_words<b>))</b>
+    <b>for</b> f <b>in</b> f_words:
+        translations[f] <b>=</b> <b>(</b> [[ e, uniform_prob, <span style='color: #800080'>0.0</span>] <b>for</b> e <b>in</b> e_words] , <span style='color: #800080'>0.0</span><b>)</b>
+    
+    <b>for</b> e <b>in</b> e_words:
+        total_s[e] <b>=</b> <span style='color: #800080'>0.0</span>
+
+<span style='color: #808080'><i># Running the program</i></span>
+readpairs<b>(</b>to_file, from_file<b>)</b>
+init_uniformly<b>()</b>
+ibm1<b>()</b>
+<b>print</b> sentences.items<b>()</b>[<span style='color: #0000ff'>2</span>]
+
+<span style='color: #808080'><i># Print the foreign word and an ordered list of likely English translations</i></span>
+<b>for</b> f <b>in</b> translations.keys<b>()</b>:
+    <b>print</b> <span style='color: #dd0000'>&quot;</span><span style='color: #ff00ff'>\n</span><span style='color: #dd0000'>&quot;</span> <b>+</b> f 
+    sorted_list <b>=</b> <span style='color: #800000'>sorted</span><b>(</b>translations[f][<span style='color: #0000ff'>0</span>], key<b>=lambda</b> x: x[<span style='color: #0000ff'>1</span>], reverse <b>=</b> <span style='color: #008000'>True</span><b>)</b>
+    <b>for</b> [a, b, c] <b>in</b> sorted_list:
+        <b>print</b> <span style='color: #dd0000'>&quot;{0}</span><span style='color: #ff00ff'>\t\t</span><span style='color: #dd0000'>{1}&quot;</span>.format<b>(</b>a, b<b>)</b></pre></body>
+</html>

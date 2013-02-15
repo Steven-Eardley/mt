@@ -12,25 +12,6 @@ else:
     print "\nUse: ibm1.py to_language from_language\nWhere these files are an alligned corpus.\n"
     exit()
 
-# punctuation tends to be surrounded by spaces.
-
- #initialize t(e|f) uniformly
- #do until convergence
-   #set count(e|f) to 0 for all e,f
-   #set total(f) to 0 for all f
-   #for all sentence pairs (e_s,f_s)
-     #set total_s(e) = 0 for all e
-     #for all words e in e_s
-       #for all words f in f_s
-         #total_s(e) += t(e|f)
-     #for all words e in e_s
-       #for all words f in f_s
-         #count(e|f) += t(e|f) / total_s(e)
-         #total(f)   += t(e|f) / total_s(e)
-   #for all f
-     #for all e
-       #t(e|f) = count(e|f) / total(f)
-
 # Store the alligned sentences in a dictionary: { sentence_no : ([e], [f]) }
 sentences = dict()
 
@@ -77,6 +58,7 @@ def readpairs(to_file, from_file):
         e_words = e_words | set(to_words)
         f_words = f_words | set(from_words)
 
+# Run IBM Model 1 until convergence. I tried to match the pseudo code here.
 def ibm1():
     init_uniformly()
     
@@ -129,6 +111,7 @@ def ibm1():
            converged = True
            print "\nToo many iterations - forced convergence\n"
         n_iterations += 1
+        
 # Initialise with each foreign word with its available translations, with uniform probability.
 def init_uniformly():
     global e_words, f_words
@@ -139,14 +122,13 @@ def init_uniformly():
     for e in e_words:
         total_s[e] = 0.0
 
-def translate():
-    return 0
-    
+# Running the program
 readpairs(to_file, from_file)
-
 init_uniformly()
 ibm1()
+print sentences.items()[2]
 
+# Print the foreign word and an ordered list of likely English translations
 for f in translations.keys():
     print "\n" + f 
     sorted_list = sorted(translations[f][0], key=lambda x: x[1], reverse = True)
