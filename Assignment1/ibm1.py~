@@ -125,7 +125,7 @@ def ibm1():
                         converged = False
                 translations[F] = (new_E_list, 0.0)
                     
-        if n_iterations > 10:
+        if n_iterations > 1000:
            converged = True
            print "\nToo many iterations - forced convergence\n"
         n_iterations += 1
