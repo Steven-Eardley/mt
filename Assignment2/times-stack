@@ -1,0 +1,30 @@
+stack1
+
+real	0m43.016s
+user	0m38.180s
+sys	0m4.708s
+
+stack10
+
+real	2m10.622s
+user	1m24.473s
+sys	0m10.079s
+
+stack100
+
+real	7m11.965s
+user	7m2.056s
+sys	0m9.408s
+
+stack1000
+
+real	48m48.036s
+user	48m39.622s
+sys	0m6.225s
+
+stack 10000
+
+real	538m52.193s
+user	535m20.196s
+sys	0m53.632s
+
